@@ -1,3 +1,4 @@
+
 import { auth } from "./firebase";
 
 import {
@@ -7,6 +8,7 @@ import {
   onAuthStateChanged,
   signOut,
 } from "firebase/auth";
+
 import React, {
   createContext,
   useContext,
@@ -21,10 +23,13 @@ import {
   NavLink,
   Navigate,
   useNavigate,
+  Routes,
+  Route,
 } from "react-router-dom";
+
 import { createRoot } from "react-dom/client";
-import { Routes, Route } from "react-router-dom";
 import axios from "axios";
+
 import {
   MapContainer,
   TileLayer,
@@ -32,7 +37,9 @@ import {
   Popup,
   useMap,
 } from "react-leaflet";
+
 import "leaflet/dist/leaflet.css";
+
 import {
   Activity,
   AlertCircle,
@@ -76,9 +83,24 @@ import {
   X,
   Zap,
 } from "lucide-react";
+
 import "./style.css";
 
-const api = axios.create({ baseURL: "/api" });
+// ==========================================
+// API CONFIGURATION - LOCAL + PRODUCTION
+// ==========================================
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+if (!API_BASE_URL) {
+  throw new Error("VITE_API_BASE_URL is missing");
+}
+
+const api = axios.create({
+  baseURL: API_BASE_URL.replace(/\/+$/, ""),
+});
+
+// Automatically attach Firebase authentication token
 api.interceptors.request.use(async (config) => {
   const currentUser = auth.currentUser;
 
@@ -91,6 +113,25 @@ api.interceptors.request.use(async (config) => {
 
   return config;
 });
+
+// Automatically attach Firebase authentication token
+api.interceptors.request.use(async (config) => {
+  const currentUser = auth.currentUser;
+
+  if (currentUser) {
+    const token = await currentUser.getIdToken();
+
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
+// ==========================================
+// CONSTANTS AND COMMON COMPONENTS
+// ==========================================
+
 const categories = [
   ["Road Accident", Ambulance, "red"],
   ["Fire Emergency", Flame, "orange"],
@@ -99,15 +140,18 @@ const categories = [
   ["Crime / Safety", Shield, "amber"],
   ["Building Emergency", Building2, "purple"],
 ];
+
 const Icon = ({ icon: I, size = 19, ...props }) => (
   <I size={size} strokeWidth={1.8} {...props} />
 );
+
 function Brand({ light = false }) {
   return (
     <Link to="/" className={"brand " + (light ? "brand-light" : "")}>
       <span className="brand-mark">
         <Cross size={18} fill="white" strokeWidth={3} />
       </span>
+
       <span>
         RescueNet <b>AI</b>
         <small>INTELLIGENT EMERGENCY RESPONSE</small>
@@ -115,6 +159,7 @@ function Brand({ light = false }) {
     </Link>
   );
 }
+
 function DemoBanner() {
   return (
     <div className="demo-banner">
@@ -124,6 +169,10 @@ function DemoBanner() {
   );
 }
 
+// ==========================================
+// LANDING PAGE
+// ==========================================
+
 function Landing() {
   const { user, profile, loading } = useContext(AuthContext);
   const navigate = useNavigate();
@@ -132,8 +181,8 @@ function Landing() {
     profile?.role === "admin"
       ? "/admin"
       : profile?.role === "responder"
-      ? "/responder"
-      : "/citizen";
+        ? "/responder"
+        : "/citizen";
 
   async function handleLogout() {
     try {
@@ -148,6 +197,7 @@ function Landing() {
   return (
     <div className="landing">
       <DemoBanner />
+
       <div className="hero">
         <nav className="landing-nav">
           <Brand light />
@@ -201,28 +251,34 @@ function Landing() {
           <div className="eyebrow light">
             <span className="pulse-dot" /> INTELLIGENT EMERGENCY RESPONSE
           </div>
+
           <h1>
             When every
             <br />
             second <em>matters.</em>
           </h1>
+
           <p className="hero-sub">
             Smarter response.
             <br />
             <strong>Safer communities.</strong>
           </p>
+
           <p className="hero-copy">
             Connecting people, responders, and intelligent technology to bring
             help where it's needed most.
           </p>
+
           <div className="hero-actions">
             <Link className="btn btn-red btn-large" to="/citizen">
               <Siren size={19} /> Report an Emergency <ArrowRight size={17} />
             </Link>
+
             <a className="btn btn-outline btn-large" href="#how">
               See how it works <ArrowRight size={17} />
             </a>
           </div>
+
           <div className="hero-note">
             <ShieldCheck size={16} /> Built for faster, more informed emergency
             response
@@ -234,14 +290,17 @@ function Landing() {
             <span className="stat-icon red-icon"><Siren /></span>
             <p><b>24/7</b><small>Emergency reporting</small></p>
           </div>
+
           <div>
             <span className="stat-icon blue-icon"><Users /></span>
             <p><b>Connected</b><small>Communities & teams</small></p>
           </div>
+
           <div>
             <span className="stat-icon yellow-icon"><Zap /></span>
             <p><b>Faster</b><small>Response coordination</small></p>
           </div>
+
           <span className="hero-bottom-label">
             A SMARTER WAY TO RESPOND <ArrowRight size={15} />
           </span>
@@ -251,11 +310,13 @@ function Landing() {
       <section className="landing-info" id="about">
         <div>
           <div className="eyebrow">BUILT FOR THE MOMENTS THAT MATTER</div>
+
           <h2>
             Help is better when
             <br />
             we work together.
           </h2>
+
           <p>
             From the first report to the final response, RescueNet brings the
             right information to the right people.
@@ -268,11 +329,13 @@ function Landing() {
             <h3>Report with confidence</h3>
             <p>Share the details that matter through a simple emergency report.</p>
           </article>
+
           <article>
             <span><Activity /></span>
             <h3>See the bigger picture</h3>
             <p>Give coordinators a clear view of incidents and response activity.</p>
           </article>
+
           <article id="how">
             <span><Users /></span>
             <h3>Respond together</h3>
@@ -292,6 +355,9 @@ function Landing() {
   );
 }
 
+// ==========================================
+// LOGIN AND REGISTRATION
+// ==========================================
 
 function Login() {
   const nav = useNavigate();
@@ -309,17 +375,14 @@ function Login() {
 
     try {
       if (register) {
-        // Create Firebase account
         await createUserWithEmailAndPassword(
           auth,
           email.trim(),
           password
         );
 
-        // Create Firestore profile through FastAPI
         await api.post("/auth/register");
       } else {
-        // Sign in using Firebase
         await signInWithEmailAndPassword(
           auth,
           email.trim(),
@@ -327,7 +390,6 @@ function Login() {
         );
       }
 
-      // Retrieve the trusted role from the backend
       const response = await api.get("/auth/me");
       const role = response.data.role;
 
@@ -342,16 +404,21 @@ function Login() {
       const firebaseErrors = {
         "auth/email-already-in-use":
           "This email is already registered. Please sign in.",
+
         "auth/invalid-email":
           "Please enter a valid email address.",
+
         "auth/weak-password":
           "Password must contain at least 6 characters.",
+
         "auth/invalid-credential":
           "Incorrect email or password.",
+
         "auth/user-not-found":
           "No account found. Please register first.",
+
         "auth/network-request-failed":
-          "Network error. Please check your internet connection."
+          "Network error. Please check your internet connection.",
       };
 
       const code = error.code;
@@ -416,6 +483,7 @@ function Login() {
 
             <div className="input-icon">
               <span>@</span>
+
               <input
                 type="email"
                 placeholder="you@example.com"
@@ -441,6 +509,7 @@ function Login() {
 
             <div className="input-icon">
               <LockKeyhole size={16} />
+
               <input
                 type="password"
                 placeholder="Enter your password"
@@ -502,17 +571,23 @@ function Login() {
 
         <div className="auth-caption">
           <span>HERE WHEN IT MATTERS</span>
+
           <h2>
             Better information.
             <br />
             Better outcomes.
           </h2>
+
           <p>Every moment counts. Let's make them matter.</p>
         </div>
       </div>
     </div>
   );
 }
+
+// ==========================================
+// SIDEBAR
+// ==========================================
 
 function Sidebar({ role }) {
   const navigate = useNavigate();
@@ -561,6 +636,7 @@ function Sidebar({ role }) {
 
         <div className="side-help">
           <LifeBuoy size={19} />
+
           <div>
             <b>RescueNet AI</b>
             <small>Demonstration mode</small>
@@ -602,52 +678,76 @@ function Sidebar({ role }) {
   );
 }
 
+// ==========================================
+// TOPBAR
+// ==========================================
+
 function Topbar({ role }) {
   return (
     <header className="topbar">
       <div className="mobile-brand">
         <Brand />
       </div>
+
       <div className="breadcrumb">
         Workspace <ChevronRight size={14} />{" "}
         <b>{role === "admin" ? "Overview" : "Responder dashboard"}</b>
       </div>
+
       <div className="top-right">
         <span className="online">
           <i /> Demo system online
         </span>
+
         <Link to="/citizen" className="top-report">
           <Plus size={16} /> New report
         </Link>
+
         <Bell size={19} />
-        <div className="avatar small">{role === "admin" ? "AD" : "RA"}</div>
+
+        <div className="avatar small">
+          {role === "admin" ? "AD" : "RA"}
+        </div>
       </div>
     </header>
   );
 }
+
+// ==========================================
+// INCIDENT DATA HOOK
+// ==========================================
+
 function useIncidents() {
-  const [data, setData] = useState([]),
-    [error, setError] = useState(""),
-    [loading, setLoading] = useState(true),
-    [lastUpdated, setLastUpdated] = useState(null),
-    [refreshing, setRefreshing] = useState(false);
-  const sequence = useRef(0),
-    mounted = useRef(true);
+  const [data, setData] = useState([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const sequence = useRef(0);
+  const mounted = useRef(true);
+
   async function load() {
     const request = ++sequence.current;
-    if (mounted.current) setRefreshing(true);
+
+    if (mounted.current) {
+      setRefreshing(true);
+    }
+
     try {
       const r = await api.get("/incidents");
+
       if (mounted.current && request === sequence.current) {
         setData(r.data);
         setError("");
         setLastUpdated(new Date());
       }
     } catch {
-      if (mounted.current && request === sequence.current)
+      if (mounted.current && request === sequence.current) {
         setError(
-          "Could not connect to the demo API. Showing the last successful data, if available.",
+          "Could not connect to the demo API. Showing the last successful data, if available."
         );
+      }
     } finally {
       if (mounted.current && request === sequence.current) {
         setLoading(false);
@@ -655,22 +755,33 @@ function useIncidents() {
       }
     }
   }
+
   useEffect(() => {
     mounted.current = true;
+
     load();
+
     const timer = setInterval(() => {
-      if (document.visibilityState === "visible") load();
+      if (document.visibilityState === "visible") {
+        load();
+      }
     }, 10000);
+
     const onVisible = () => {
-      if (document.visibilityState === "visible") load();
+      if (document.visibilityState === "visible") {
+        load();
+      }
     };
+
     document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       mounted.current = false;
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
+
   async function update(id, body) {
     try {
       await api.patch("/incidents/" + id, body);
@@ -679,12 +790,27 @@ function useIncidents() {
       setError("Update failed. Please try again.");
     }
   }
-  return { data, error, loading, load, update, lastUpdated, refreshing };
+
+  return {
+    data,
+    error,
+    loading,
+    load,
+    update,
+    lastUpdated,
+    refreshing,
+  };
 }
+
+// ==========================================
+// DASHBOARD SHELL
+// ==========================================
+
 function Shell({ role, children }) {
   return (
     <div className="app-shell">
       <Sidebar role={role} />
+
       <div className="main-wrap">
         <Topbar role={role} />
         <DemoBanner />
@@ -693,21 +819,29 @@ function Shell({ role, children }) {
     </div>
   );
 }
+
+// ==========================================
+// METRICS AND STATUS
+// ==========================================
+
 function Metric({ icon: I, color, label, value, note }) {
   return (
     <div className="metric">
       <div className={"metric-icon " + color}>
         <I size={23} />
       </div>
+
       <div>
         <span>{label}</span>
         <strong>{value}</strong>
         <small>{note}</small>
       </div>
+
       <ArrowDownRight className="metric-arrow" size={17} />
     </div>
   );
 }
+
 function Status({ value }) {
   return (
     <span className={"status " + value.toLowerCase().replaceAll(" ", "-")}>
@@ -715,36 +849,55 @@ function Status({ value }) {
     </span>
   );
 }
+
+// ==========================================
+// MAP COMPONENTS
+// ==========================================
+
 function FitMap({ incidents, fitSignal }) {
-  const map = useMap(),
-    firstFit = useRef(false);
+  const map = useMap();
+  const firstFit = useRef(false);
+
   const points = incidents
     .filter((i) => Number.isFinite(i.lat) && Number.isFinite(i.lng))
     .map((i) => [i.lat, i.lng]);
+
   useEffect(() => {
     if (points.length && (!firstFit.current || fitSignal > 0)) {
-      map.fitBounds(points, { padding: [40, 40], maxZoom: 14 });
+      map.fitBounds(points, {
+        padding: [40, 40],
+        maxZoom: 14,
+      });
+
       firstFit.current = true;
     }
   }, [fitSignal, points.length]);
+
   useEffect(() => {
     const timer = setTimeout(() => map.invalidateSize(), 150);
     return () => clearTimeout(timer);
   }, [map]);
+
   return null;
 }
+
 function LiveMap({ incidents }) {
-  const [filter, setFilter] = useState("all"),
-    [fitSignal, setFitSignal] = useState(0),
-    [tileError, setTileError] = useState(false);
+  const [filter, setFilter] = useState("all");
+  const [fitSignal, setFitSignal] = useState(0);
+  const [tileError, setTileError] = useState(false);
+
   const valid = incidents.filter(
-    (i) => Number.isFinite(i.lat) && Number.isFinite(i.lng),
+    (i) => Number.isFinite(i.lat) && Number.isFinite(i.lng)
   );
+
   const visible = valid.filter(
     (i) =>
       filter === "all" ||
-      (filter === "active" ? i.status !== "Resolved" : i.status === "Resolved"),
+      (filter === "active"
+        ? i.status !== "Resolved"
+        : i.status === "Resolved")
   );
+
   return (
     <>
       <div className="map-controls">
@@ -767,6 +920,7 @@ function LiveMap({ incidents }) {
             </button>
           ))}
         </div>
+
         <button
           type="button"
           className="map-fit"
@@ -776,6 +930,7 @@ function LiveMap({ incidents }) {
           <LocateFixed size={14} /> Fit markers
         </button>
       </div>
+
       <div className="map-container">
         <MapContainer
           center={[17.44, 78.39]}
@@ -786,9 +941,13 @@ function LiveMap({ incidents }) {
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            eventHandlers={{ tileerror: () => setTileError(true) }}
+            eventHandlers={{
+              tileerror: () => setTileError(true),
+            }}
           />
+
           <FitMap incidents={visible} fitSignal={fitSignal} />
+
           {visible.map((i) => (
             <CircleMarker
               key={i.id}
@@ -810,6 +969,7 @@ function LiveMap({ incidents }) {
                 <br />
                 Status: {i.status}
                 <br />
+
                 <a
                   target="_blank"
                   rel="noreferrer"
@@ -821,17 +981,20 @@ function LiveMap({ incidents }) {
             </CircleMarker>
           ))}
         </MapContainer>
+
         <div className="map-tag">
           <span className="dot-red" /> {visible.length} simulated location
           {visible.length === 1 ? "" : "s"}
         </div>
       </div>
+
       {tileError && (
         <div className="map-warning">
           Map tiles could not be loaded. Check your internet connection or tile
           provider availability.
         </div>
       )}
+
       <div className="map-hint">
         {incidents.length - valid.length} report
         {incidents.length - valid.length === 1 ? "" : "s"} without shared
@@ -841,7 +1004,9 @@ function LiveMap({ incidents }) {
   );
 }
 
-
+// ==========================================
+// ADMIN DASHBOARD
+// ==========================================
 
 function Admin() {
   const {
@@ -873,8 +1038,6 @@ function Admin() {
 
   return (
     <Shell role="admin">
-
-      {/* Page Heading */}
       <div className="page-heading">
         <div>
           <div className="eyebrow">
@@ -903,19 +1066,14 @@ function Admin() {
         </div>
       </div>
 
-      {/* Error Message */}
       {error && <div className="error">{error}</div>}
 
-      {/* Dashboard Metrics */}
       <div className="metrics" id="analytics">
-
         <Metric
           icon={Siren}
           color="red"
           label="Total incidents"
-          value={
-            loading ? "—" : data.length.toString().padStart(2, "0")
-          }
+          value={loading ? "—" : data.length.toString().padStart(2, "0")}
           note="All simulated reports"
         />
 
@@ -923,9 +1081,7 @@ function Admin() {
           icon={AlertTriangle}
           color="orange"
           label="Active incidents"
-          value={
-            loading ? "—" : active.toString().padStart(2, "0")
-          }
+          value={loading ? "—" : active.toString().padStart(2, "0")}
           note="Needs attention"
         />
 
@@ -933,11 +1089,7 @@ function Admin() {
           icon={Ambulance}
           color="green"
           label="Assigned incidents"
-          value={
-            loading
-              ? "—"
-              : assignedCount.toString().padStart(2, "0")
-          }
+          value={loading ? "—" : assignedCount.toString().padStart(2, "0")}
           note="Across demo teams and responders"
         />
 
@@ -955,15 +1107,10 @@ function Admin() {
           }
           note="Completed responses"
         />
-
       </div>
 
-      {/* Map and Recent Activity */}
       <div className="overview-grid">
-
-        {/* Live Emergency Map */}
         <section className="panel map-panel" id="map">
-
           <div className="panel-title">
             <div>
               <h2>
@@ -997,22 +1144,13 @@ function Admin() {
           <LiveMap incidents={data} />
 
           <div className="map-legend">
-            <span>
-              <i className="legend-red" /> Active incident
-            </span>
-
-            <span>
-              <i className="legend-green" /> Resolved
-            </span>
-
+            <span><i className="legend-red" /> Active incident</span>
+            <span><i className="legend-green" /> Resolved</span>
             <span>Map data © OpenStreetMap</span>
           </div>
-
         </section>
 
-        {/* Recent Activity */}
         <section className="panel activity-panel">
-
           <div className="panel-title">
             <div>
               <h2>Recent activity</h2>
@@ -1023,31 +1161,21 @@ function Admin() {
           </div>
 
           <div className="activity-list">
-
             {data.slice(0, 4).map((i, n) => (
               <div className="activity-item" key={i.id}>
-
-                <div
-                  className={
-                    "activity-symbol " +
-                    (n % 2 ? "blue" : "red")
-                  }
-                >
+                <div className={"activity-symbol " + (n % 2 ? "blue" : "red")}>
                   <Siren size={15} />
                 </div>
 
                 <div>
                   <b>{i.category} reported</b>
-
                   <p>{i.location}</p>
-
                   <small>
                     #{String(i.id).padStart(4, "0")} · {i.status}
                   </small>
                 </div>
 
                 <span>Demo</span>
-
               </div>
             ))}
 
@@ -1056,33 +1184,25 @@ function Admin() {
                 No incidents have been reported yet.
               </p>
             )}
-
           </div>
 
           <a href="#incidents" className="panel-link">
             View all incidents <ArrowRight size={15} />
           </a>
-
         </section>
-
       </div>
 
-      {/* Incident Management */}
       <section className="panel incident-panel" id="incidents">
-
         <div className="panel-title">
           <div>
             <h2>Recent incidents</h2>
             <p>Monitor and coordinate incoming reports</p>
           </div>
 
-          <span className="soft-pill">
-            {data.length} reports
-          </span>
+          <span className="soft-pill">{data.length} reports</span>
         </div>
 
         <div className="table-wrap">
-
           <table>
             <thead>
               <tr>
@@ -1095,10 +1215,8 @@ function Admin() {
             </thead>
 
             <tbody>
-
               {data.map((i) => (
                 <tr key={i.id}>
-
                   <td>
                     <b>{i.category}</b>
                     <small>
@@ -1110,13 +1228,8 @@ function Admin() {
                     <MapPin size={14} /> {i.location}
                   </td>
 
-                  <td>
-                    <Status value={i.severity} />
-                  </td>
-
-                  <td>
-                    <Status value={i.status} />
-                  </td>
+                  <td><Status value={i.severity} /></td>
+                  <td><Status value={i.status} /></td>
 
                   <td>
                     <select
@@ -1131,43 +1244,35 @@ function Admin() {
                       <option value="Team Bravo">Team Bravo</option>
                     </select>
                   </td>
-
                 </tr>
               ))}
 
               {!loading && data.length === 0 && (
                 <tr>
-                  <td colSpan="5">
-                    No incidents available.
-                  </td>
+                  <td colSpan="5">No incidents available.</td>
                 </tr>
               )}
-
             </tbody>
           </table>
-
         </div>
-
       </section>
 
-      {/* Demo Notice */}
       <div id="teams" className="bottom-note">
         <ShieldCheck size={15} />
         Demo data is simulated and is not monitored by emergency services.
       </div>
-
     </Shell>
   );
 }
 
+// ==========================================
+// CITIZEN DASHBOARD
+// ==========================================
 
 function Citizen() {
   const nav = useNavigate();
-
-  // Get authenticated user and profile
   const { user, profile } = useContext(AuthContext);
 
-  // Citizen report form states
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
@@ -1177,7 +1282,6 @@ function Citizen() {
   const [busy, setBusy] = useState(false);
   const [submitted, setSubmitted] = useState(null);
 
-  // Firebase logout
   async function handleLogout() {
     try {
       await signOut(auth);
@@ -1188,7 +1292,6 @@ function Citizen() {
     }
   }
 
-  // Get citizen location
   function locate() {
     if (!navigator.geolocation) {
       setMessage("Geolocation is not supported by this browser.");
@@ -1199,8 +1302,8 @@ function Citizen() {
 
     navigator.geolocation.getCurrentPosition(
       (p) => {
-        let lat = p.coords.latitude;
-        let lng = p.coords.longitude;
+        const lat = p.coords.latitude;
+        const lng = p.coords.longitude;
 
         setCoords({ lat, lng });
         setLocation(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
@@ -1213,7 +1316,6 @@ function Citizen() {
     );
   }
 
-  // Submit emergency report
   async function submit(e) {
     e.preventDefault();
 
@@ -1225,7 +1327,7 @@ function Citizen() {
     setBusy(true);
 
     try {
-      let r = await api.post("/incidents", {
+      const r = await api.post("/incidents", {
         category,
         description,
         location,
@@ -1247,8 +1349,6 @@ function Citizen() {
 
   return (
     <div className="citizen-page">
-
-      {/* Citizen Header */}
       <header className="citizen-header">
         <Brand />
 
@@ -1276,8 +1376,6 @@ function Citizen() {
       <DemoBanner />
 
       <div className="citizen-body">
-
-        {/* Introduction */}
         <div className="citizen-intro">
           <div className="eyebrow">WE’RE HERE TO HELP</div>
 
@@ -1298,7 +1396,6 @@ function Citizen() {
           </div>
         </div>
 
-        {/* Submission Success */}
         {submitted ? (
           <div className="form-card success-card">
             <div className="success-icon">
@@ -1335,12 +1432,10 @@ function Citizen() {
             </div>
           </div>
         ) : (
-
-          /* Emergency Report Form */
           <form className="form-card" onSubmit={submit}>
-
             <div className="form-section-title">
               <span>01</span>
+
               <div>
                 <h2>What’s the emergency?</h2>
                 <p>
@@ -1379,6 +1474,7 @@ function Citizen() {
 
             <div className="form-section-title">
               <span>02</span>
+
               <div>
                 <h2>Tell us more</h2>
                 <p>
@@ -1478,7 +1574,6 @@ function Citizen() {
               <ShieldCheck size={15} /> This demonstration does not contact
               emergency responders.
             </div>
-
           </form>
         )}
 
@@ -1486,13 +1581,14 @@ function Citizen() {
           <span>© 2026 RescueNet AI</span>
           <Link to="/">Back to home</Link>
         </div>
-
       </div>
     </div>
   );
 }
 
-
+// ==========================================
+// RESPONDER DASHBOARD
+// ==========================================
 
 function Responder() {
   const {
@@ -1534,8 +1630,6 @@ function Responder() {
 
   return (
     <Shell role="responder">
-
-      {/* Page Heading */}
       <div className="page-heading">
         <div>
           <div className="eyebrow">
@@ -1575,18 +1669,12 @@ function Responder() {
 
       {error && <div className="error">{error}</div>}
 
-      {/* Metrics */}
       <div className="responder-metrics">
-
         <Metric
           icon={ClipboardList}
           color="blue"
           label="Assigned to you"
-          value={
-            loading
-              ? "—"
-              : assigned.length.toString().padStart(2, "0")
-          }
+          value={loading ? "—" : assigned.length.toString().padStart(2, "0")}
           note="Team Alpha"
         />
 
@@ -1613,24 +1701,17 @@ function Responder() {
           }
           note="Completed incidents"
         />
-
       </div>
 
-      {/* Assignments and Timeline */}
       <div className="response-grid">
-
-        {/* Assigned Emergencies */}
         <section className="panel assignments" id="assignments">
-
           <div className="panel-title">
             <div>
               <h2>Assigned emergencies</h2>
               <p>Incidents currently assigned to Team Alpha</p>
             </div>
 
-            <span className="soft-pill">
-              {active.length} active
-            </span>
+            <span className="soft-pill">{active.length} active</span>
           </div>
 
           {loading ? (
@@ -1650,16 +1731,13 @@ function Responder() {
                 }
                 key={i.id}
               >
-
                 <div className="assignment-icon">
                   <Ambulance size={27} />
                 </div>
 
                 <div className="assignment-content">
-
                   <div className="assignment-top">
                     <Status value={i.severity} />
-
                     <span>
                       #{String(i.id).padStart(4, "0")} · Simulated
                     </span>
@@ -1676,7 +1754,6 @@ function Responder() {
                   </p>
 
                   <div className="assignment-actions">
-
                     {i.status === "Assigned" && (
                       <button
                         className="btn btn-red"
@@ -1720,18 +1797,14 @@ function Responder() {
                     >
                       View details
                     </button>
-
                   </div>
                 </div>
               </article>
             ))
           )}
-
         </section>
 
-        {/* Response Timeline */}
         <section className="panel timeline" id="timeline">
-
           <div className="panel-title">
             <div>
               <h2>Response timeline</h2>
@@ -1748,7 +1821,6 @@ function Responder() {
 
           {chosen ? (
             <>
-
               <div className="timeline-location">
                 <MapPin size={17} />
 
@@ -1774,14 +1846,12 @@ function Responder() {
               )}
 
               <div className="timeline-steps">
-
                 {[
                   "Assigned",
                   "In progress",
                   "Arrived",
                   "Resolved",
                 ].map((s, n) => {
-
                   const idx = [
                     "Assigned",
                     "In progress",
@@ -1798,7 +1868,6 @@ function Responder() {
                       }
                       key={s}
                     >
-
                       <span>
                         {done ? <Check size={12} /> : n + 1}
                       </span>
@@ -1816,27 +1885,20 @@ function Responder() {
                               : "Pending"}
                         </small>
                       </div>
-
                     </div>
                   );
                 })}
-
               </div>
-
             </>
           ) : (
             <div className="empty">
               No incident selected.
             </div>
           )}
-
         </section>
-
       </div>
 
-      {/* Response History */}
       <section className="panel history" id="history">
-
         <div className="panel-title">
           <div>
             <h2>Response history</h2>
@@ -1857,37 +1919,34 @@ function Responder() {
         ) : (
           completed.map((i) => (
             <div className="history-row" key={i.id}>
-
               <div className="history-icon">
                 <Check size={17} />
               </div>
 
               <div>
                 <b>{i.category}</b>
-
                 <small>
                   #{String(i.id).padStart(4, "0")} · {i.location}
                 </small>
               </div>
 
               <Status value="Resolved" />
-
             </div>
           ))
         )}
-
       </section>
 
-      {/* Demo Notice */}
       <div className="bottom-note">
         <ShieldCheck size={15} />
         This is a simulated workspace. No real emergency services are connected.
       </div>
-
     </Shell>
   );
 }
 
+// ==========================================
+// AUTHENTICATION CONTEXT
+// ==========================================
 
 const AuthContext = createContext(null);
 
@@ -1897,36 +1956,36 @@ function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (!firebaseUser) {
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-        return;
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (firebaseUser) => {
+        if (!firebaseUser) {
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+
+        setLoading(true);
+
+        try {
+          // Shared Axios instance attaches the Firebase token automatically.
+          const response = await api.get("/auth/me");
+
+          setUser(firebaseUser);
+          setProfile(response.data);
+        } catch (error) {
+          console.error("Session verification failed:", error);
+
+          setUser(null);
+          setProfile(null);
+
+          await signOut(auth);
+        } finally {
+          setLoading(false);
+        }
       }
-
-      setLoading(true);
-
-      try {
-        const token = await firebaseUser.getIdToken();
-
-        const response = await axios.get("/api/auth/me", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        setUser(firebaseUser);
-        setProfile(response.data);
-      } catch (error) {
-        console.error("Session verification failed:", error);
-        setUser(null);
-        setProfile(null);
-        await signOut(auth);
-      } finally {
-        setLoading(false);
-      }
-    });
+    );
 
     return unsubscribe;
   }, []);
@@ -1937,6 +1996,10 @@ function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
+// ==========================================
+// PROTECTED ROUTES
+// ==========================================
 
 function ProtectedRoute({ allowedRoles, children }) {
   const { user, profile, loading } = useContext(AuthContext);
@@ -1955,6 +2018,11 @@ function ProtectedRoute({ allowedRoles, children }) {
 
   return children;
 }
+
+// ==========================================
+// MAIN APPLICATION
+// ==========================================
+
 function App() {
   return (
     <BrowserRouter>
@@ -1990,10 +2058,18 @@ function App() {
             }
           />
 
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route
+            path="*"
+            element={<Navigate to="/" replace />}
+          />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
   );
 }
+
+// ==========================================
+// RENDER APPLICATION
+// ==========================================
+
 createRoot(document.getElementById("root")).render(<App />);
