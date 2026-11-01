@@ -78,9 +78,12 @@ if not service_account_path:
         "FIREBASE_SERVICE_ACCOUNT_PATH is missing in backend/.env"
     )
 
-service_account_file = (
-    BASE_DIR / service_account_path
-).resolve()
+service_account_file = Path(service_account_path)
+
+if not service_account_file.is_absolute():
+    service_account_file = BASE_DIR / service_account_file
+
+service_account_file = service_account_file.resolve()
 
 if not service_account_file.is_file():
     raise FileNotFoundError(
